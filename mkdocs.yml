@@ -1,0 +1,67 @@
+site_name: System Design Tutorials
+site_description: Hands-on high-level and low-level system design tutorials with real-life tradeoffs, written for interview preparation.
+site_url: https://pankajsoni22.github.io/system-design/
+repo_url: https://github.com/pankajsoni22/system-design
+repo_name: pankajsoni22/system-design
+
+# MkDocs needs docs_dir to be a child of this file's directory. `docs/` holds only
+# symlinks to the real content (README.md and the two top-level design folders),
+# so the repo layout stays as described in CLAUDE.md.
+docs_dir: docs
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - navigation.footer
+    - content.code.copy
+    - content.tabs.link
+    - search.highlight
+    - search.suggest
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+# Add every new page here. Order = the order a reader should study them in.
+nav:
+  - Home: index.md
+  - High-Level Design:
+      - high-level-design/README.md
+      - Concepts:
+          - high-level-design/concept/README.md
+  - Low-Level Design:
+      - low-level-design/README.md
+      - Concepts:
+          - low-level-design/concept/README.md
