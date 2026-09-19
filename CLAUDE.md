@@ -33,7 +33,8 @@ system-design/
 │   └── design-<name>/            # e.g. design-book-my-show/
 └── low-level-design/
     ├── README.md                 # Index of LLD concepts and designs
-    ├── design-principles/        # Principles and design patterns, one page each: singleton-design-pattern.md, solid-principles.md
+    ├── design-principles/        # Principles and design patterns, one directory each
+    │   └── singleton-design-pattern/   # README.md (the tutorial) + logger/ (source) + tests/ + demos
     ├── concept/                  # Other LLD building blocks (UML notation, concurrency primitives, ...)
     └── design-<name>/            # e.g. design-parking-lot/
 ```
@@ -41,7 +42,7 @@ system-design/
 Rules:
 1. There are two top-level content directories: `high-level-design` and `low-level-design`.
 2. Each may contain a `concept` directory with one file per concept. Concepts are self-contained and are linked from designs instead of being re-explained in them.
-3. `low-level-design/design-principles/` holds OO design principles and design patterns (SOLID, Singleton, Factory, ...), one file per topic named `<topic>-design-pattern.md` for patterns or `<topic>.md` for principles. It has its own `README.md` index. Pattern and principle pages follow this flow: problem → intuition/analogy → plain-words explanation → official definition explained → structure diagrams → step-by-step Python 3.12 implementation → real-world uses and when not to use → tradeoffs → interview tips → key takeaways → references.
+3. `low-level-design/design-principles/` holds OO design principles and design patterns (SOLID, Singleton, Factory, ...), one directory per topic named `<topic>-design-pattern/` for patterns or `<topic>/` for principles. The directory's `README.md` is the tutorial, and next to it sit the Python source, `tests/` and demos of the worked example. `design-principles/README.md` indexes the topics. Pattern and principle pages follow this flow: problem → intuition/analogy → plain-words explanation → official definition explained → structure diagrams → **worked example design** (requirements → classes → class diagram → behaviour diagram → decisions and tradeoffs table → real code) → real-world uses and when not to use → tradeoffs → interview tips → key takeaways → references. Do not walk through toy code variants; teach through one realistic design instead.
 4. Every design example lives in its own directory named `design-<kebab-case-name>`, e.g. `design-book-my-show`.
 5. Each design directory has a `README.md` as its entry point. Longer designs split into numbered files (see templates) so pages stay readable.
 6. Directory and file names are lowercase kebab-case. No spaces.
@@ -147,7 +148,9 @@ flowchart LR
 - Follow PEP 8 and name things after the domain. Format with `ruff format`, lint with `ruff check`, and type-check with `mypy --strict` (or `pyright`).
 - Use only the standard library in reference code, apart from `pytest` for tests. If a third-party package is genuinely needed, say why on the page.
 - Code must run. Keep each example minimal, with an `if __name__ == "__main__":` demo or tests. Include `pytest` tests for behavior that is non-obvious, and for concurrency where relevant.
-- Code lives in the design's `05-implementation/` directory as a plain package (`__init__.py`, one module per class or small group of related classes, `tests/`). It is referenced from the docs. Prefer including snippets from real files (with `pymdownx.snippets`, e.g. `--8<-- "path/to/file.py"`) over pasting code that can drift out of sync.
+- Code lives in the design's `05-implementation/` directory as a plain package (`__init__.py`, one module per class or small group of related classes, `tests/`). It is shown in the docs page.
+- Show code **inline in the Markdown** (so it reads on GitHub as well as on the site) as fenced blocks titled with the file path relative to the page, e.g. ```` ```python title="logger/logger.py" ````, with content identical to the file. Generate those blocks from the real files instead of typing them, and keep a `tests/test_docs_in_sync.py` next to the page that fails when a titled block differs from its file. Blocks without a `title` are illustrative only.
+- Concurrency tests must be able to fail: widen the race window (slow the code under test, release threads with a barrier), and check by temporarily removing the protection that the test then fails. Say honestly on the page when a protection cannot be shown to matter on CPython.
 - Write idiomatic Python: use properties, first-class functions, `Protocol`s and composition instead of getters/setters, deep inheritance or pattern boilerplate. Say so when a classic pattern collapses into a language feature (e.g. Strategy as a callable).
 
 ## Docs site

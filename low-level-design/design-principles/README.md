@@ -9,4 +9,4 @@ Foundations for low-level design. Each page starts from a problem, builds the in
 
 | Topic | What it covers |
 |-------|----------------|
-| [Singleton Design Pattern](singleton-design-pattern.md) | One shared instance with global access: definition, thread-safe Python implementations, real-world uses, tradeoffs, interview questions |
+| [Singleton Design Pattern](singleton-design-pattern/README.md) | One shared instance with global access: definition, a worked thread-safe Logger design (class diagram, decisions, tradeoffs, runnable code), real-world uses, interview questions |

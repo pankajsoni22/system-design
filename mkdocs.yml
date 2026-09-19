@@ -9,6 +9,13 @@ repo_name: pankajsoni22/system-design
 # so the repo layout stays as described in CLAUDE.md.
 docs_dir: docs
 
+# Tool caches created when running the Python examples inside content folders.
+exclude_docs: |
+  __pycache__/
+  .pytest_cache/
+  .mypy_cache/
+  .ruff_cache/
+
 theme:
   name: material
   features:
@@ -65,6 +72,6 @@ nav:
       - low-level-design/README.md
       - Design Principles:
           - low-level-design/design-principles/README.md
-          - Singleton Design Pattern: low-level-design/design-principles/singleton-design-pattern.md
+          - Singleton Design Pattern: low-level-design/design-principles/singleton-design-pattern/README.md
       - Concepts:
           - low-level-design/concept/README.md
