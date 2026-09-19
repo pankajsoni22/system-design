@@ -14,6 +14,7 @@ Start here. Each page builds the intuition first, then gives the formal definiti
 - [Singleton Design Pattern](design-principles/singleton-design-pattern/README.md)
 - [Factory Design Pattern](design-principles/factory-design-pattern/README.md)
 - [Strategy Design Pattern](design-principles/strategy-design-pattern/README.md)
+- [Observer Design Pattern](design-principles/observer-design-pattern/README.md)
 
 ## Concepts
 

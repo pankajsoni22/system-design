@@ -37,7 +37,8 @@ system-design/
     ├── design-principles/        # Principles and design patterns, one directory each
     │   ├── singleton-design-pattern/   # README.md (the tutorial) + logger/ (source) + tests/ + demos
     │   ├── factory-design-pattern/     # README.md (the tutorial) + notifications/ (source) + tests/ + demo
-    │   └── strategy-design-pattern/    # README.md (the tutorial) + cache/ (source) + tests/ + demo
+    │   ├── strategy-design-pattern/    # README.md (the tutorial) + cache/ (source) + tests/ + demo
+    │   └── observer-design-pattern/    # README.md (the tutorial) + pricefeed/ (source) + tests/ + demo
     ├── concept/                  # Other LLD building blocks (UML notation, concurrency primitives, ...)
     └── design-<name>/            # e.g. design-parking-lot/
 ```

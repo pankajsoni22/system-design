@@ -878,7 +878,7 @@ Follow-up questions and where the design would go:
 | "Smarter policies (2Q, ARC, admission filters)" | New `EvictionPolicy` subclasses. Some need an extra hook such as "should this new key be admitted at all?". That **widens the interface**, and every existing policy must adopt the change: a real cost of Strategy |
 | "Policies that consider entry size" | Pass the weight to `record_insert`. Again a wider interface, traded against policies that can use more information |
 | "Write-through and write-back" | Another strategy, `WritePolicy`, chosen independently of eviction: free combinations, which is why we did not use subclasses |
-| "Notify me when something is evicted" | A listener callback, which leads into the **Observer** pattern |
+| "Notify me when something is evicted" | A listener callback, which leads into the [**Observer** pattern](../observer-design-pattern/README.md) |
 | "Cache across many servers" | A high-level design topic: partitioning keys across nodes and what happens when a node fails |
 
 ## 7. Where to use it

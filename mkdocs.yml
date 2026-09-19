@@ -75,6 +75,7 @@ nav:
           - Singleton Design Pattern: low-level-design/design-principles/singleton-design-pattern/README.md
           - Factory Design Pattern: low-level-design/design-principles/factory-design-pattern/README.md
           - Strategy Design Pattern: low-level-design/design-principles/strategy-design-pattern/README.md
+          - Observer Design Pattern: low-level-design/design-principles/observer-design-pattern/README.md
       - Concepts:
           - low-level-design/concept/README.md
           - UML Basics (Class Diagrams): low-level-design/concept/uml-basics.md
