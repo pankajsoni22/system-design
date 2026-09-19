@@ -786,7 +786,7 @@ Read it line by line:
 Two earlier pages contain class diagrams. Try naming each relationship before checking the answer.
 
 - [Singleton: Logger class diagram](../design-principles/singleton-design-pattern/README.md#63-class-diagram)
-- [Factory: Notification Service class diagram](../design-principles/factory-design-pattern/README.md#63-class-diagram)
+- [Factory: Notification Service class diagram](../design-principles/factory-design-pattern/README.md#83-class-diagram)
 
 | Look for | Relationship | Why |
 |---------------------|--------------|-----|

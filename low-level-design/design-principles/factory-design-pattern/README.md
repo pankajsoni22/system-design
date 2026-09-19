@@ -1,126 +1,453 @@
 ---
 title: Factory Design Pattern
-description: Understand the Factory family (Simple Factory, Factory Method, Abstract Factory) from the problem it solves and the official definitions to a worked, tested Notification Service design with class diagrams, decisions, tradeoffs, runnable Python 3.12 code and interview tips.
+description: A beginner-friendly guide to the three Factory patterns (Simple Factory, Factory Method, Abstract Factory). Each gets its own section with an everyday picture, a small runnable example, diagrams, pros and cons, and when to use it, followed by a worked, tested Notification Service design and interview tips.
 ---
 
 # Factory Design Pattern
 
 **What you will learn**
 
-- The problem factories solve, in plain language.
-- The three "factory" ideas people mix up: **Simple Factory**, **Factory Method** and **Abstract Factory**, and how to tell them apart.
-- The official (Gang of Four) definitions, explained phrase by phrase.
-- How to apply them in a real design: a **Notification Service** with class diagrams, decisions and tradeoffs, and runnable, tested Python 3.12 code.
-- Where the pattern is used, where it is overkill, and how to talk about it in an interview.
+- The problem factories solve, explained from scratch.
+- The **three flavours** of factory, one section each: **Simple Factory**, **Factory Method** and **Abstract Factory**. For every flavour you get an everyday picture, a small runnable example, diagrams, its pros and cons, and when to use it (and when not to).
+- How to tell the three apart, and how to pick one.
+- A worked, tested **Notification Service** design that uses them together.
+- Where factories appear in real Python code, and how to talk about them in an interview.
 
-The Notification Service source lives next to this page as real `.py` files with tests. Everything was run on Python 3.12 and the output shown is real. Code blocks with a file title are the real files, and a test checks that they match. Blocks without a title are illustrations.
+**How to read this page.** If Factory is new to you, read sections 1 to 7 in order. Each flavour builds on the one before it. Section 8 is a longer, realistic design, and you can come back to it after the basics.
+
+The examples live next to this page as real `.py` files with tests. Everything was run on Python 3.12 and the output shown is real. Code blocks with a file title are the real files, and a test checks that they match. Blocks without a title are either small illustrations that were run separately, or short excerpts of a real file named next to them.
 
 ---
 
 ## 1. The problem
 
-Your app sends notifications by email, SMS and push. The quickest way to write it is a chain of `if` statements that builds the right sender:
+A coffee shop's program needs to make drinks. The quickest way to write it is with a chain of `if` statements:
 
 ```python
-def send_notification(channel: str, recipient: str, message: str) -> None:
-    if channel == "email":
-        client = SmtpClient(host="smtp.example.com", user=..., password=...)
-        client.send_mail(recipient, subject="Notification", body=message)
-    elif channel == "sms":
-        client = SmsProviderClient(api_key=...)
-        client.send_text(recipient, message[:160])
-    elif channel == "push":
-        client = PushServiceClient(project_id=...)
-        client.send_push(recipient, message)
-    else:
-        raise ValueError(f"unknown channel {channel}")
+def make_drink(kind: str) -> str:
+    if kind == "espresso":
+        return "Pulling a shot of espresso"
+    if kind == "latte":
+        return "Pulling a shot, steaming milk, pouring a latte"
+    if kind == "tea":
+        return "Steeping a tea bag"
+    raise ValueError(f"we do not serve {kind!r}")
+
+
+def price(kind: str) -> int:
+    if kind == "espresso":
+        return 120
+    if kind == "latte":
+        return 180
+    if kind == "tea":
+        return 90
+    raise ValueError(f"we do not serve {kind!r}")
+
+
+print(make_drink("latte"))
+print(price("latte"))
 ```
 
-It works, but the same chain soon gets copied into the retry job, the scheduler and the admin tool. Then:
+Output (the prices are just example numbers):
 
-1. **Every new channel edits every chain.** Adding WhatsApp means finding and changing all the copies, and missing one is a bug.
-2. **Callers depend on concrete classes.** `SmtpClient` and friends are imported everywhere, so you cannot test the callers without a real (or mocked) SMTP server.
-3. **Creation details leak into business logic.** Hosts, keys and settings are mixed into code whose real job is "tell the user their order shipped".
+```text
+Pulling a shot, steaming milk, pouring a latte
+180
+```
+
+It works. But notice that the same `if` chain appears **twice**, and it will soon appear in the receipt printer, the menu screen and the stock checker too. Then:
+
+1. **Every new drink means hunting down every chain.** Add "cold brew" and you must find and change each copy. Miss one and you have a bug that only shows up when a customer orders cold brew.
+2. **The code that takes orders knows about every drink.** It has to know all the names, and all the details of how each one is made.
+3. **It is hard to test.** You cannot test the order screen without dragging in every drink.
+4. **Recipe details are mixed into everything.** Code that should be about *orders* is full of *how to make a latte*.
 
 ```mermaid
 flowchart LR
-    subgraph before["Without a factory: everyone knows every class"]
-        A1[Checkout] --> E1[EmailSender]
-        A1 --> S1[SmsSender]
-        A2[Scheduler] --> E1
-        A2 --> S1
+    subgraph before["Without a factory: every place decides for itself"]
+        A1[Order screen] --> C1{"if latte, tea, espresso"}
+        B1[Receipt printer] --> C2{"if latte, tea, espresso"}
     end
-    subgraph after["With a factory: callers know one interface"]
-        A3[Checkout] --> I[Sender interface]
-        A4[Scheduler] --> I
-        A3 --> F[Factory]
-        A4 --> F
-        F -. creates .-> E2[EmailSender]
-        F -. creates .-> S2[SmsSender]
-        E2 -. implements .-> I
-        S2 -. implements .-> I
+    subgraph after["With a factory: one place decides"]
+        A2[Order screen] --> F[Drink factory]
+        B2[Receipt printer] --> F
+        F -. builds .-> D[Espresso or Latte or Tea]
     end
 ```
 
-*Left: every caller is tied to every concrete class. Right: callers talk to an interface and ask a factory for the object, so only the factory knows the concrete classes.*
+*Left: each part of the program repeats the same decision. Right: they all ask one factory, and only the factory knows how to build each drink.*
 
-What we want is a **single place that decides which class to create**, handing back something callers can use without knowing what it really is. That is the idea behind the Factory family of patterns.
+What we want is **one place that knows how to build things**, so the rest of the program can just say what it needs. That is the idea behind every kind of "factory".
 
-## 2. An everyday analogy
+## 2. Words you will see
 
-Think of a **ride-hailing app**. You tap "Ride". The app runs the same process every time: estimate the fare, match a driver, track the trip, take payment. But *what kind of vehicle shows up* depends on the city: an auto-rickshaw in Mumbai, a yellow cab in New York, a tuk-tuk in Bangkok.
+A few plain-English definitions, so nothing later is a mystery:
 
-- The **process is fixed** and lives in the app. It never says "auto-rickshaw".
-- The **vehicle is decided by a local operator** who overrides one step: "create the vehicle".
+| Word | What it means | Example |
+|------|---------------|---------|
+| **Class** | A blueprint for making objects | `Latte` |
+| **Object** (or **instance**) | A real thing built from a class | The latte you are holding |
+| **Create** (or **instantiate**) | Build an object from a class | `Latte()` |
+| **Interface** (or **abstract class**) | A **promise** about what something can do, without saying how | "Every `Drink` can `prepare()`" |
+| **Concrete class** | A real, ready-to-use class that keeps that promise | `Latte`, as opposed to the general idea of a `Drink` |
+| **Subclass** | A class that builds on another one | `Latte` is a subclass of `Drink` |
+| **Product** | The thing a factory makes | A `Drink` |
+| **Client** | The code that *uses* the products | The `Cafe` |
+| **Factory** | Code whose job is to create objects | `DrinkFactory` |
 
-That is **Factory Method**: a fixed workflow that hands one decision, "which object do I create?", to a subclass.
+In Python, the promise is written with `ABC` (short for "abstract base class") and `@abstractmethod`. It means: "any class that wants to be a `Drink` **must** provide `prepare()`". You will see this in every example below.
 
-Now picture a **furniture showroom** with themed collections. If you choose the "Modern" collection you get a modern chair, a modern sofa and a modern table, and they match. You would not want a Victorian chair next to a modern sofa. That is **Abstract Factory**: one factory that produces a whole *family* of matching objects.
+!!! tip "Why promises matter here"
+    The whole trick of factories is that the **client only knows the promise** ("it is some kind of `Drink`") and never the concrete class ("it is a `Latte`"). That is what lets you change or add drinks without touching the client.
 
-And the person at the reception desk who hears "I'd like a taxi" and calls the right company? That is a **Simple Factory**: a helper that maps a request to the right thing.
+## 3. The big picture: one idea, three flavours
 
-## 3. What a factory is, in plain words
+Every factory pattern does the same basic thing: **it moves the decision "which class do I build?" out of the code that uses the object, into one dedicated place.** The three flavours differ in *how* that place is arranged:
 
-> A factory is code whose only job is to **decide which concrete class to create**, and to hand the object back as something with a **known interface**. Callers say *what they need*, not *which class to build*.
+| Flavour | In one line | Real-life picture | Section |
+|---------|-------------|-------------------|---------|
+| **Simple Factory** | One helper builds the right thing when you ask by name | The counter at a coffee shop | [4](#4-flavour-1-simple-factory) |
+| **Factory Method** | A base class runs fixed steps and lets each subclass choose what to build | A ride-hailing app with a different vehicle in each city | [5](#5-flavour-2-factory-method) |
+| **Abstract Factory** | One factory builds a whole set of matching things | A furniture showroom with themed collections | [6](#6-flavour-3-abstract-factory) |
 
-There are three flavours, and interviewers care that you can separate them:
+Simple Factory is not one of the 23 patterns in the famous *Design Patterns* book by the "Gang of Four" (Gamma, Helm, Johnson and Vlissides, 1994, usually shortened to **GoF**). It is such a common habit that people learn it first. Factory Method and Abstract Factory *are* in the book, and you will see their official definitions in their sections.
 
-| Flavour | One-line idea | In the GoF book? | Typical shape |
-|---------|---------------|------------------|---------------|
-| **Simple Factory** | One function or class that maps a name or condition to an object | No, it is a common programming idiom | `create("email")` returns an email notifier |
-| **Factory Method** | A base class has a fixed workflow and an abstract "create" step; **subclasses decide** what to create | Yes | `Notifier.create_channel()` overridden by `EmailNotifier` |
-| **Abstract Factory** | An interface for creating **families of related objects** that must go together | Yes | `ModernFactory` creates a modern chair *and* a modern sofa |
+Each of the next three sections follows the same layout, so you always know where to look:
 
-## 4. The official definitions
+1. **In one sentence**
+2. **A real-life picture**
+3. **The example** (real code and its real output)
+4. **Read it step by step**
+5. **The pictures** (diagrams)
+6. **Pros and cons**
+7. **When to use it, and when not to**
+8. **Try it yourself**
 
-Both patterns come from *Design Patterns: Elements of Reusable Object-Oriented Software* (Gamma, Helm, Johnson and Vlissides, 1994, the "Gang of Four" or GoF book). Simple Factory is not one of its 23 patterns.
+## 4. Flavour 1: Simple Factory
 
-### Factory Method
+### In one sentence
 
-> **"Define an interface for creating an object, but let subclasses decide which class to instantiate. Factory Method lets a class defer instantiation to subclasses."**
+> A **simple factory** is one helper that you ask for something **by name**, and it builds the right thing for you.
 
-| Phrase | What it means in practice | Why it is there |
-|--------|---------------------------|-----------------|
-| **"Define an interface for creating an object"** | A method, such as `create_channel()`, that returns a `Channel` (the abstract type) | The base class can ask for "a channel" without naming one |
-| **"but let subclasses decide which class to instantiate"** | `EmailNotifier` overrides the method to return an `EmailChannel`, `SmsNotifier` returns an `SmsChannel` | The decision moves to where the knowledge is |
-| **"lets a class defer instantiation to subclasses"** | The base class does all the shared work (validate, retry, report), and only the "which object?" step is postponed | You reuse one workflow for many products |
+### A real-life picture
 
-!!! note "A variation you will meet"
-    The GoF book also describes a **parameterized factory method**: a factory method that takes an identifier ("email", "sms") and decides what to return. That is very close to what people call a Simple Factory, and it is what the `NotifierFactory` below does.
+You walk up to a coffee counter and say "one latte, please". You do not go into the kitchen, find the milk and work the machine. The barista **knows which recipe matches "latte"** and hands you the finished drink. The next customer says "tea", and the same counter gives them something different.
 
-### Abstract Factory
+The barista is the factory. The customer is the client. The customer never needs to know *how* a latte is made.
 
-> **"Provide an interface for creating families of related or dependent objects without specifying their concrete classes."**
+### The example
 
-| Phrase | What it means in practice | Why it is there |
-|--------|---------------------------|-----------------|
-| **"an interface for creating"** | A factory with one creation method per kind of object, e.g. `create_chair()` and `create_sofa()` | Callers depend on this interface only |
-| **"families of related or dependent objects"** | A set of objects that must match each other (same theme, same platform, same vendor) | Prevents mixing a Victorian chair with a modern sofa |
-| **"without specifying their concrete classes"** | Callers never write `ModernChair(...)` | Swapping the whole family is a one-line change |
+This is the coffee shop from section 1, fixed. Read it once quickly, then follow the step-by-step notes below.
 
-## 5. Structure
+```python title="factory_flavours/simple_factory.py"
+from abc import ABC, abstractmethod
 
-**Factory Method.** The creator holds the workflow and calls the abstract factory method. Each concrete creator overrides it:
+
+class Drink(ABC):
+    """What every drink can do. The rest of the program only knows this much."""
+
+    @abstractmethod
+    def prepare(self) -> str: ...
+
+
+class Espresso(Drink):
+    def prepare(self) -> str:
+        return "Pulling a shot of espresso"
+
+
+class Latte(Drink):
+    def prepare(self) -> str:
+        return "Pulling a shot, steaming milk, pouring a latte"
+
+
+class Tea(Drink):
+    def prepare(self) -> str:
+        return "Steeping a tea bag"
+
+
+class DrinkFactory:
+    """The simple factory: give it a name, get back the right drink."""
+
+    def create(self, kind: str) -> Drink:
+        if kind == "espresso":
+            return Espresso()
+        if kind == "latte":
+            return Latte()
+        if kind == "tea":
+            return Tea()
+        raise ValueError(f"we do not serve {kind!r}")
+
+
+class Cafe:
+    """The code that uses drinks. It never mentions Espresso, Latte or Tea."""
+
+    def __init__(self, factory: DrinkFactory) -> None:
+        self._factory = factory
+
+    def order(self, kind: str) -> str:
+        drink = self._factory.create(kind)
+        return drink.prepare()
+
+
+if __name__ == "__main__":
+    cafe = Cafe(DrinkFactory())
+    print(cafe.order("latte"))
+    print(cafe.order("tea"))
+    try:
+        cafe.order("soup")
+    except ValueError as problem:
+        print(f"Sorry: {problem}")
+```
+
+Run it with `python factory_flavours/simple_factory.py`. The output:
+
+```text
+Pulling a shot, steaming milk, pouring a latte
+Steeping a tea bag
+Sorry: we do not serve 'soup'
+```
+
+### Read it step by step
+
+1. **`Drink`** is the promise: every drink can `prepare()`.
+2. **`Espresso`, `Latte` and `Tea`** are the real drinks. Each keeps the promise in its own way.
+3. **`DrinkFactory.create("latte")`** is the *only* place that knows which name matches which class. This is the simple factory.
+4. **`Cafe.order()`** asks the factory for a drink, then calls `prepare()`. Look closely: the words `Espresso`, `Latte` and `Tea` **never appear inside `Cafe`**.
+5. If someone asks for `"soup"`, the factory says no, in one place, with one clear message.
+
+### The pictures
+
+```mermaid
+classDiagram
+    direction LR
+    class Cafe {
+        +order(kind) str
+    }
+    class DrinkFactory {
+        +create(kind) Drink
+    }
+    class Drink {
+        <<abstract>>
+        +prepare()* str
+    }
+    class Espresso
+    class Latte
+    class Tea
+    Cafe --> DrinkFactory : asks
+    Cafe ..> Drink : uses
+    DrinkFactory ..> Drink : returns
+    Drink <|-- Espresso
+    Drink <|-- Latte
+    Drink <|-- Tea
+    DrinkFactory ..> Espresso : creates
+    DrinkFactory ..> Latte : creates
+    DrinkFactory ..> Tea : creates
+```
+
+*How to read it: `Cafe` asks `DrinkFactory` (solid arrow) and only *uses* the general `Drink` (dashed arrow). The factory is the only one that *creates* the real drinks. The triangles show that `Espresso`, `Latte` and `Tea` are all kinds of `Drink`. New to the notation? See [UML Basics: Class Diagrams](../../concept/uml-basics.md).*
+
+And here is what happens when the cafe orders a latte, step by step in time:
+
+```mermaid
+sequenceDiagram
+    participant C as Cafe
+    participant F as DrinkFactory
+    participant L as Latte
+    C->>F: create latte
+    F->>L: build a Latte
+    F-->>C: the Latte, seen as a Drink
+    C->>L: prepare
+    L-->>C: the recipe steps
+```
+
+*The cafe never builds anything. It asks, receives a `Drink`, and uses it.*
+
+### Pros and cons
+
+**Pros**
+
+- **One place decides.** All the "which class?" logic lives in one spot, so there are no copies to keep in step.
+- **The client stays simple.** `Cafe` does not import or mention any concrete drink.
+- **Easy to understand.** It is only a helper with an `if` chain. You can explain it in a minute.
+- **Easy to test the client.** Hand the cafe a *fake* factory (the test `test_the_cafe_only_talks_to_the_factory` does exactly this) and you never need real drinks.
+- **A good home for building details.** Settings, cups, or credentials needed to build a thing can live in the factory instead of leaking everywhere.
+
+**Cons**
+
+- **Adding a product means editing the factory.** A new drink needs a new `if` branch inside `DrinkFactory`. The program is *not* fully "open for extension without changing old code".
+- **The factory can grow into a monster.** Fifty drinks means fifty branches, and the factory ends up knowing about everything.
+- **Names are plain text.** `"latte"` is a string, so a typo like `"lattee"` is only caught when the program runs.
+- **It has no structure for sharing steps.** If making drinks needs a common workflow, a simple factory does not help with that (Factory Method does).
+
+### When to use it, and when not to
+
+| Use it when | Skip it when |
+|-------------|--------------|
+| Several callers need to create the same kinds of object | There is only one class and no realistic second one |
+| The choice depends on a name, a setting, or user input | The `if` chain appears in exactly one place and will not grow |
+| You want creation details in one place | Building the object is a single trivial call such as `Point(1, 2)` |
+
+### Try it yourself
+
+**Question:** You want to add a "cold brew". Which lines of the example must change?
+
+**Answer:** Two things: write a new `ColdBrew(Drink)` class, and add one more `if kind == "cold brew"` branch to `DrinkFactory.create`. `Cafe` does not change at all, which is the benefit. But `DrinkFactory` *did* change, which is the drawback.
+
+A common fix is to store a **dictionary** of name to class inside the factory, so adding a drink means adding one entry instead of editing an `if` chain. Section 8 does exactly that.
+
+!!! note "Remember"
+    A simple factory answers "**which class should I build for this name?**" and keeps that answer in one place.
+
+**Next:** the simple factory picks by name. But what if a whole *workflow* is identical everywhere and only *what gets created* changes? That is the next flavour.
+
+## 5. Flavour 2: Factory Method
+
+### In one sentence
+
+> **Factory Method** is a base class that runs a fixed set of steps, and leaves one step, "**which object do I create?**", for each subclass to fill in.
+
+### A real-life picture
+
+Think of a **ride-hailing app** in different cities. Booking a ride is the same everywhere: estimate the fare, send a vehicle, track the trip, take the payment. But *which vehicle arrives* depends on the city: an auto-rickshaw in Mumbai, a yellow cab in New York, a tuk-tuk in Bangkok.
+
+- The **booking steps are written once**, in the main app.
+- The **choice of vehicle is left to each city's version** of the app.
+
+The main app says "send a vehicle", and each city answers "here is what *we* send". That answer is the factory method.
+
+### The problem it solves
+
+Without it, you would copy the four booking steps into an app for every city. Then a change to "take the payment" has to be repeated in every copy. Or you would write one big app full of `if city == "Mumbai"` checks, which grows with every new city. Factory Method lets you write the steps **once** and vary only the creation.
+
+### The example
+
+```python title="factory_flavours/factory_method.py"
+from abc import ABC, abstractmethod
+
+
+class Vehicle(ABC):
+    @abstractmethod
+    def describe(self) -> str: ...
+
+
+class AutoRickshaw(Vehicle):
+    def describe(self) -> str:
+        return "an auto-rickshaw"
+
+
+class YellowCab(Vehicle):
+    def describe(self) -> str:
+        return "a yellow cab"
+
+
+class RideApp(ABC):
+    """Every city runs the same booking steps. Only the vehicle differs."""
+
+    def book_ride(self, pickup: str, drop: str) -> list[str]:
+        vehicle = self.create_vehicle()  # the factory method: the city decides
+        return [
+            f"Estimate the fare from {pickup} to {drop}",
+            f"Send {vehicle.describe()} to {pickup}",
+            "Track the trip",
+            "Take the payment",
+        ]
+
+    @abstractmethod
+    def create_vehicle(self) -> Vehicle:
+        """Each city's app says which vehicle to create."""
+
+
+class MumbaiRideApp(RideApp):
+    def create_vehicle(self) -> Vehicle:
+        return AutoRickshaw()
+
+
+class NewYorkRideApp(RideApp):
+    def create_vehicle(self) -> Vehicle:
+        return YellowCab()
+
+
+if __name__ == "__main__":
+    for city, app in [("Mumbai", MumbaiRideApp()), ("New York", NewYorkRideApp())]:
+        print(f"--- {city}")
+        for step in app.book_ride("Central Station", "the airport"):
+            print(step)
+```
+
+Run it with `python factory_flavours/factory_method.py`. The output:
+
+```text
+--- Mumbai
+Estimate the fare from Central Station to the airport
+Send an auto-rickshaw to Central Station
+Track the trip
+Take the payment
+--- New York
+Estimate the fare from Central Station to the airport
+Send a yellow cab to Central Station
+Track the trip
+Take the payment
+```
+
+### Read it step by step
+
+1. **`Vehicle`** is the promise: every vehicle can `describe()` itself.
+2. **`RideApp`** is the base class. Its `book_ride` method holds the four steps, **written once**.
+3. Inside `book_ride`, the second step calls **`self.create_vehicle()`**. The base class does not say *how*. It just asks.
+4. **`create_vehicle`** is marked `@abstractmethod`, which means: "every city's app **must** answer this". This method is the **factory method**.
+5. **`MumbaiRideApp`** answers with an `AutoRickshaw`. **`NewYorkRideApp`** answers with a `YellowCab`.
+6. Run `book_ride` in either city: the steps are identical, and only the vehicle line changes.
+
+### The pictures
+
+```mermaid
+classDiagram
+    direction TB
+    class RideApp {
+        <<abstract>>
+        +book_ride(pickup, drop) list
+        #create_vehicle()* Vehicle
+    }
+    class MumbaiRideApp {
+        #create_vehicle() Vehicle
+    }
+    class NewYorkRideApp {
+        #create_vehicle() Vehicle
+    }
+    class Vehicle {
+        <<abstract>>
+        +describe()* str
+    }
+    class AutoRickshaw
+    class YellowCab
+    RideApp <|-- MumbaiRideApp
+    RideApp <|-- NewYorkRideApp
+    Vehicle <|-- AutoRickshaw
+    Vehicle <|-- YellowCab
+    RideApp ..> Vehicle : uses
+    MumbaiRideApp ..> AutoRickshaw : creates
+    NewYorkRideApp ..> YellowCab : creates
+```
+
+*How to read it: the two city apps are kinds of `RideApp` (triangles). `RideApp` only *uses* the general `Vehicle`. Each city app *creates* its own real vehicle. The `#` in front of `create_vehicle` means "for subclasses to fill in".*
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant M as MumbaiRideApp
+    participant R as AutoRickshaw
+    C->>M: book_ride
+    Note over M: the steps live in RideApp, written once
+    M->>M: create_vehicle
+    M->>R: build an AutoRickshaw
+    M->>R: describe
+    R-->>M: an auto-rickshaw
+    M-->>C: the four booking steps
+```
+
+*The client calls `book_ride`. Partway through, the app calls its own `create_vehicle`, and the city's answer decides what is built.*
+
+**The textbook picture.** The general shape of the pattern, with the official names, looks like this. Match each name to the example above:
 
 ```mermaid
 classDiagram
@@ -137,14 +464,9 @@ classDiagram
     }
     class Product {
         <<interface>>
-        +use()
     }
-    class ConcreteProductA {
-        +use()
-    }
-    class ConcreteProductB {
-        +use()
-    }
+    class ConcreteProductA
+    class ConcreteProductB
     Creator <|-- ConcreteCreatorA
     Creator <|-- ConcreteCreatorB
     Product <|.. ConcreteProductA
@@ -154,83 +476,372 @@ classDiagram
     ConcreteCreatorB ..> ConcreteProductB : creates
 ```
 
-| Role | Meaning | In the Notification Service |
-|------|---------|-----------------------------|
-| **Product** | The interface of the thing being created | `Channel` |
-| **Concrete product** | One implementation | `EmailChannel`, `SmsChannel`, `PushChannel` |
-| **Creator** | Owns the workflow and declares the factory method | `Notifier` |
-| **Concrete creator** | Overrides the factory method | `EmailNotifier`, `SmsNotifier`, `PushNotifier` |
+| Official name | Meaning | In the ride example |
+|---------------|---------|---------------------|
+| **Product** | The promise of the thing being created | `Vehicle` |
+| **Concrete product** | A real one | `AutoRickshaw`, `YellowCab` |
+| **Creator** | The base class with the fixed steps and the abstract "create" method | `RideApp` |
+| **Concrete creator** | A subclass that answers "what do I create?" | `MumbaiRideApp`, `NewYorkRideApp` |
+| **Factory method** | The "create" method itself | `create_vehicle` |
 
-```mermaid
-sequenceDiagram
-    participant C as Client
-    participant K as ConcreteCreator
-    participant P as ConcreteProduct
-    C->>K: some_operation()
-    K->>K: create_product() is the factory method
-    K->>P: build the product
-    K->>P: use()
-    K-->>C: result
+### The official definition
+
+The GoF book describes Factory Method like this:
+
+> **"Define an interface for creating an object, but let subclasses decide which class to instantiate. Factory Method lets a class defer instantiation to subclasses."**
+
+In plain words:
+
+| Phrase | What it means |
+|--------|---------------|
+| **"Define an interface for creating an object"** | Declare a method, such as `create_vehicle()`, that returns "some kind of vehicle" |
+| **"let subclasses decide which class to instantiate"** | Each subclass chooses the real class: `MumbaiRideApp` picks `AutoRickshaw` |
+| **"lets a class defer instantiation to subclasses"** | The base class does all the shared work but *postpones* the "which one to build?" decision to its subclasses |
+
+### How is this different from a Simple Factory?
+
+| | Simple Factory | Factory Method |
+|---|----------------|----------------|
+| **Who decides what is built?** | The **caller**, by passing a name (`"latte"`) | The **subclass you chose** (`MumbaiRideApp`) |
+| **Where does the choice live?** | In one `if` chain in the factory | Spread across subclasses, one small method each |
+| **Is there a shared workflow?** | No, the factory only builds | Yes, the base class runs fixed steps around the creation |
+| **How do you add a variant?** | Edit the factory | Write a new subclass, and change nothing that exists |
+
+### Pros and cons
+
+**Pros**
+
+- **Shared steps are written once.** Fix "take the payment" in one place and every city gets it.
+- **New variants need no edits to old code.** A new city means a new subclass. The test `test_a_new_city_needs_only_a_new_subclass` adds Bangkok without touching `RideApp`.
+- **The base class stays clean.** It never mentions `AutoRickshaw` or `YellowCab`.
+- **A handy hook for tests.** A test can override `create_vehicle` to return a fake vehicle and check the *whole* workflow without real ones.
+
+**Cons**
+
+- **One subclass per variant.** The number of classes grows with the number of cities. Many of those subclasses are just a few lines that say "create my thing".
+- **It depends on inheritance.** The subclasses are tied to their base class, and the choice is fixed when you create the object. You cannot switch a Mumbai app into a New York one later.
+- **It can be confusing at first.** The flow jumps between the base class and the subclass, so beginners often ask "where is this method called from?"
+- **Often more than you need in Python.** Because a class or function can be passed around, you can sometimes pass "how to create the vehicle" as an argument instead of writing a subclass. Section 8 shows this shortcut.
+
+### When to use it, and when not to
+
+| Use it when | Skip it when |
+|-------------|--------------|
+| A fixed workflow needs a different product each time | You only need to pick a class by name (use a simple factory) |
+| A base class cannot know in advance which concrete class it needs | There is no shared workflow, only creation |
+| You want subclasses, or tests, to plug in their own products | Only one or two tiny variants exist and are unlikely to grow |
+
+### Try it yourself
+
+**Question:** Add a city, Bangkok, where a tuk-tuk arrives. Which classes do you write, and what stays untouched?
+
+**Answer:** Write a `TukTuk(Vehicle)` class and a `BangkokRideApp(RideApp)` class whose `create_vehicle` returns `TukTuk()`. `RideApp` and everything else stay untouched. That is the benefit. The cost is that even a tiny variant needs *two* new classes.
+
+!!! note "Remember"
+    Factory Method answers "**this workflow is always the same, but which object it creates depends on the subclass**".
+
+**Next:** Factory Method creates **one** kind of thing. What if you must create several kinds of things that all have to *match* each other?
+
+## 6. Flavour 3: Abstract Factory
+
+### In one sentence
+
+> An **abstract factory** is a factory that builds a whole **set of matching things**, so they always go together.
+
+### A real-life picture
+
+Picture a **furniture showroom** with themed collections. Choose the "Modern" collection and you get a modern chair, a modern sofa, a modern table, and they all match. You would never want a carved Victorian chair next to a slim modern sofa.
+
+- Each **collection** is a factory.
+- The **furniture pieces** are what it makes.
+- Because you pick **one collection**, everything you get is guaranteed to match.
+
+### The problem it solves
+
+Suppose the showroom program creates each piece on its own:
+
+```text
+chair = ModernChair()
+sofa = VictorianSofa()      # oops: a mismatch, and nothing stopped it
 ```
 
-*The client only talks to the creator. The creator's own code calls `create_product()`, and the subclass decides what comes back.*
+Nothing prevents mixing styles by mistake. And changing the whole room from Modern to Victorian means finding every place a chair *and* a sofa are created. With an abstract factory you make **one** decision, "which collection?", and every piece follows.
 
-**Abstract Factory.** One factory interface, several creation methods, one concrete factory per family:
+### The example
+
+```python title="factory_flavours/abstract_factory.py"
+from abc import ABC, abstractmethod
+from typing import ClassVar
+
+
+class Chair(ABC):
+    style: ClassVar[str]
+
+    @abstractmethod
+    def describe(self) -> str: ...
+
+
+class Sofa(ABC):
+    style: ClassVar[str]
+
+    @abstractmethod
+    def describe(self) -> str: ...
+
+
+class ModernChair(Chair):
+    style = "modern"
+
+    def describe(self) -> str:
+        return "a slim metal chair"
+
+
+class ModernSofa(Sofa):
+    style = "modern"
+
+    def describe(self) -> str:
+        return "a low grey sofa"
+
+
+class VictorianChair(Chair):
+    style = "victorian"
+
+    def describe(self) -> str:
+        return "a carved wooden chair"
+
+
+class VictorianSofa(Sofa):
+    style = "victorian"
+
+    def describe(self) -> str:
+        return "a velvet sofa with curled arms"
+
+
+class FurnitureFactory(ABC):
+    """One factory per style. Each one builds a whole matching set."""
+
+    @abstractmethod
+    def create_chair(self) -> Chair: ...
+
+    @abstractmethod
+    def create_sofa(self) -> Sofa: ...
+
+
+class ModernFactory(FurnitureFactory):
+    def create_chair(self) -> Chair:
+        return ModernChair()
+
+    def create_sofa(self) -> Sofa:
+        return ModernSofa()
+
+
+class VictorianFactory(FurnitureFactory):
+    def create_chair(self) -> Chair:
+        return VictorianChair()
+
+    def create_sofa(self) -> Sofa:
+        return VictorianSofa()
+
+
+class Showroom:
+    """The code that uses the furniture. It never says which style it got."""
+
+    def __init__(self, factory: FurnitureFactory) -> None:
+        self._factory = factory
+
+    def show(self) -> list[str]:
+        chair = self._factory.create_chair()
+        sofa = self._factory.create_sofa()
+        return [f"Chair: {chair.describe()}", f"Sofa: {sofa.describe()}"]
+
+
+if __name__ == "__main__":
+    for name, factory in [
+        ("Modern", ModernFactory()),
+        ("Victorian", VictorianFactory()),
+    ]:
+        print(f"--- {name} showroom")
+        for line in Showroom(factory).show():
+            print(line)
+```
+
+Run it with `python factory_flavours/abstract_factory.py`. The output:
+
+```text
+--- Modern showroom
+Chair: a slim metal chair
+Sofa: a low grey sofa
+--- Victorian showroom
+Chair: a carved wooden chair
+Sofa: a velvet sofa with curled arms
+```
+
+### Read it step by step
+
+1. **`Chair` and `Sofa`** are two promises: the two *kinds* of product.
+2. **`ModernChair`, `ModernSofa`, `VictorianChair` and `VictorianSofa`** are the four real classes: two styles times two kinds.
+3. **`FurnitureFactory`** is the promise for a *whole factory*: "I can make a chair **and** a sofa".
+4. **`ModernFactory`** and **`VictorianFactory`** each build only their own style. So whatever you get from one factory always matches.
+5. **`Showroom`** is handed **one** factory. It asks for a chair and a sofa, and it cannot mix styles because it only *has* one factory.
+6. To change the whole look, hand the showroom a **different factory**. Nothing else changes.
+
+### The pictures
 
 ```mermaid
 classDiagram
+    direction TB
+    class Showroom {
+        +show() list
+    }
     class FurnitureFactory {
-        <<interface>>
-        +create_chair() Chair
-        +create_sofa() Sofa
+        <<abstract>>
+        +create_chair()* Chair
+        +create_sofa()* Sofa
     }
     class ModernFactory
     class VictorianFactory
     class Chair {
-        <<interface>>
+        <<abstract>>
     }
     class Sofa {
-        <<interface>>
+        <<abstract>>
     }
     class ModernChair
     class ModernSofa
     class VictorianChair
     class VictorianSofa
-    FurnitureFactory <|.. ModernFactory
-    FurnitureFactory <|.. VictorianFactory
-    Chair <|.. ModernChair
-    Chair <|.. VictorianChair
-    Sofa <|.. ModernSofa
-    Sofa <|.. VictorianSofa
+    Showroom --> FurnitureFactory : holds one
+    FurnitureFactory <|-- ModernFactory
+    FurnitureFactory <|-- VictorianFactory
+    Chair <|-- ModernChair
+    Chair <|-- VictorianChair
+    Sofa <|-- ModernSofa
+    Sofa <|-- VictorianSofa
     ModernFactory ..> ModernChair : creates
     ModernFactory ..> ModernSofa : creates
     VictorianFactory ..> VictorianChair : creates
     VictorianFactory ..> VictorianSofa : creates
 ```
 
-*The client holds a `FurnitureFactory` and never learns which family it got. Everything it creates matches.*
+*How to read it: the showroom holds one `FurnitureFactory` and only knows the general `Chair` and `Sofa`. Each real factory creates a matching pair. The two columns of classes are the two "families".*
 
-**Which one do I need?**
+```mermaid
+sequenceDiagram
+    participant S as Showroom
+    participant F as ModernFactory
+    participant C as ModernChair
+    participant O as ModernSofa
+    S->>F: create_chair
+    F->>C: build a ModernChair
+    F-->>S: the chair
+    S->>F: create_sofa
+    F->>O: build a ModernSofa
+    F-->>S: the sofa
+    S->>C: describe
+    S->>O: describe
+```
+
+*Both pieces come from the same factory, so they match.*
+
+### The official definition
+
+The GoF book describes Abstract Factory like this:
+
+> **"Provide an interface for creating families of related or dependent objects without specifying their concrete classes."**
+
+In plain words:
+
+| Phrase | What it means |
+|--------|---------------|
+| **"Provide an interface for creating"** | Declare a factory promise with one create-method per kind of product (`create_chair`, `create_sofa`) |
+| **"families of related or dependent objects"** | Sets of things that must match: all modern, or all Victorian |
+| **"without specifying their concrete classes"** | The client never writes `ModernChair`, so swapping the family is one change |
+
+### How is this different from Factory Method?
+
+| | Factory Method | Abstract Factory |
+|---|----------------|------------------|
+| **What does it create?** | **One** kind of product | A **family** of products (chair *and* sofa) |
+| **How is it used?** | You **override a method** in a subclass (inheritance) | You **hold a factory object** and call its methods (composition) |
+| **Main goal** | Let a fixed workflow choose its product | Make sure related products **match** |
+| **Relationship** | A single creation hook | Each `create_...` method on an abstract factory is *itself* a factory method |
+
+### Pros and cons
+
+**Pros**
+
+- **Products always match.** One factory means one family, so a Victorian sofa can never end up next to a modern chair.
+- **Swapping a whole family is one change.** Give the showroom a different factory.
+- **The client stays ignorant of the concrete classes.** `Showroom` never says `Modern` or `Victorian`.
+- **All creation of related objects is in one place** per family.
+- **New families are easy.** A new style is a new factory and new product classes. The test `test_a_new_family_works_with_the_showroom_unchanged` adds a Scandinavian one without changing `Showroom`.
+
+**Cons**
+
+- **Adding a new *kind* of product is painful.** To add a table, you change `FurnitureFactory` **and every concrete factory**. The test `test_a_factory_must_make_every_kind_of_product` shows the rigidity: a factory that forgets to make a sofa cannot even be created.
+- **Many classes.** Here, 2 kinds times 2 styles gives 4 product classes plus 2 factories plus 3 promises. With 3 kinds and 3 styles it is 9 products.
+- **More complex** than the other two. It is easy to over-engineer.
+- **Only worth it for real families.** If nothing has to match, it is just extra layers.
+
+### When to use it, and when not to
+
+| Use it when | Skip it when |
+|-------------|--------------|
+| Several objects must be from the same family and must match | You only ever create one kind of object |
+| You may switch the whole family (a theme, a platform, a vendor) | There is only one family, and there will not be a second |
+| Callers should not know which family they are using | The "family" is really just a single setting |
+
+### Try it yourself
+
+**Question:** You want to add a **table** to the showroom. Which files or classes change?
+
+**Answer:** Write a `Table` promise and two real tables (`ModernTable`, `VictorianTable`). Then add a `create_table` method to `FurnitureFactory` **and** to both `ModernFactory` and `VictorianFactory`. If the showroom should display tables, update `Showroom.show` too. That is a lot of edits for one new product, and it is the main cost of Abstract Factory.
+
+!!! note "Remember"
+    Abstract Factory answers "**I need several things, and they must all belong to the same family**".
+
+## 7. Comparing the three
+
+Here are all three side by side:
+
+| | Simple Factory | Factory Method | Abstract Factory |
+|---|----------------|----------------|------------------|
+| **In one line** | One helper builds by name | A subclass decides inside a fixed workflow | One factory builds a matching set |
+| **Creates** | One kind of thing | One kind of thing | Several kinds, as a family |
+| **Who decides** | The caller (by name) | The subclass | The factory you hold |
+| **Built with** | A function or class with an `if` chain (or a dictionary) | Inheritance: override a method | Composition: pass in a factory object |
+| **Adding a new variant** | Edit the factory | Add a subclass | Add a new factory and new products |
+| **Adding a new kind of product** | Edit the factory | Not the point | Edit the abstract factory **and all factories** |
+| **Everyday picture** | Coffee counter | Ride app per city | Furniture showroom |
+| **In the GoF book** | No | Yes | Yes |
+| **Reach for it when** | Pick a class from a name or setting | A fixed workflow needs a different product per variant | Several objects must match |
+
+**Which one do I need?** Answer these questions in order:
 
 ```mermaid
 flowchart TD
-    A[I need objects without naming their class] --> B{Must several related objects match each other?}
+    A[I need to create objects without naming the class] --> B{Must several related objects match each other?}
     B -- yes --> AF[Abstract Factory]
     B -- no --> C{Is there a fixed workflow that needs a different product per variant?}
     C -- yes --> FM[Factory Method]
-    C -- no --> D{Am I choosing from a name, config value or user input?}
-    D -- yes --> SF[Simple Factory with a registry]
+    C -- no --> D{Am I choosing from a name, a setting or user input?}
+    D -- yes --> SF[Simple Factory]
     D -- no --> E[Just call the constructor]
 ```
 
-*The last branch matters: if nothing varies, a factory is needless indirection.*
+*The last branch matters: if nothing varies, a factory is needless extra work.*
 
-!!! note "Python is not built like the books' languages"
-    In Python, classes are objects and can be passed around and called like functions. So `EmailChannel` itself is already a "factory function" for email channels, and a plain `dict` of name to class often replaces a whole class hierarchy. Section 6 keeps the textbook Factory Method *and* ships the Pythonic alternative side by side so you can compare them.
+**How the three fit together.** They are not rivals. Real designs mix them:
 
-## 6. Worked example: Design a Notification Service
+- An abstract factory's `create_...` methods are **factory methods**.
+- A simple factory is often used to **choose which** creator or abstract factory to use ("give me the `ModernFactory` for this setting").
+- The Notification Service in the next section uses a simple factory to pick by name and a Factory Method for the shared workflow.
 
-Time to use the ideas on a real low-level design problem. Most products send notifications through several channels, and "design a notification system" is a common interview question.
+!!! note "Python is friendly to factories"
+    In Python, classes and functions can be passed around like any other value. So a class such as `Latte` already **is** a tiny factory: calling `Latte()` builds a latte. Very often a plain function, or a dictionary from name to class, does the job of a whole factory class. The Notification Service below keeps the textbook form *and* the Python shortcut side by side, so you can compare them.
+
+## 8. Worked example: Design a Notification Service
+
+You now know all three flavours. Time to see them in a real low-level design problem. Most products send notifications through several channels, and "design a notification system" is a common interview question. This design uses a **simple factory with a registry** to pick a channel by name, and a **Factory Method** for the shared delivery workflow. Section 8.6 explains why it does *not* need an Abstract Factory, and what would change that.
 
 The full source is in this folder as real Python files with tests. Everything below explains *why* it looks the way it does.
 
@@ -244,7 +855,7 @@ The full source is in this folder as real Python files with tests. Everything be
 | `demo.py` | A runnable demo |
 | `tests/` | `pytest` tests |
 
-### 6.1 Requirements
+### 8.1 Requirements
 
 **Functional**
 
@@ -260,9 +871,9 @@ The full source is in this folder as real Python files with tests. Everything be
 - **Testable**: application code must be testable without real email or SMS servers.
 - **Robust**: a bad address or a stale channel name on one channel must not stop the other channels.
 
-**Out of scope** (good follow-ups, see [6.9](#69-extending-it-and-interview-follow-ups)): real provider integrations, backoff between retries, asynchronous sending, templates, delivery receipts, persistence.
+**Out of scope** (good follow-ups, see [8.9](#89-extending-it-and-interview-follow-ups)): real provider integrations, backoff between retries, asynchronous sending, templates, delivery receipts, persistence.
 
-### 6.2 Finding the classes
+### 8.2 Finding the classes
 
 Underline the nouns, then give each class one job:
 
@@ -276,7 +887,7 @@ Underline the nouns, then give each class one job:
 | `Gateway` | The outside world (SMTP server, SMS provider) | Anything about notifications |
 | `DeliveryResult` | The outcome of one send | Everything else |
 
-### 6.3 Class diagram
+### 8.3 Class diagram
 
 !!! tip "New to class diagrams?"
     See [UML Basics: Class Diagrams](../../concept/uml-basics.md) for what every box, arrow and diamond means.
@@ -343,7 +954,7 @@ classDiagram
 
 *Reading the diagram: the service asks the factory for a `Notifier` by name. `Notifier` is the Factory Method **creator**: its workflow calls `create_channel()`, and each subclass overrides that to build its own `Channel`. `NotifierFactory` is the simple factory that maps names to notifiers. `CallableNotifier` is the Pythonic alternative to writing one subclass per channel.*
 
-### 6.4 What happens on `service.send("sms", ...)`
+### 8.4 What happens on `service.send("sms", ...)`
 
 ```mermaid
 sequenceDiagram
@@ -373,7 +984,7 @@ sequenceDiagram
 
 *The loop stops at the first success. A `TransientChannelError` from the gateway triggers another attempt; when the budget runs out, the result says so.*
 
-### 6.5 Design decisions and tradeoffs
+### 8.5 Design decisions and tradeoffs
 
 This is the part interviewers care about most. Each row is a real choice with a real cost:
 
@@ -388,7 +999,7 @@ This is the part interviewers care about most. Each row is a real choice with a 
 | 7 | Reporting failures | Return a `DeliveryResult`, never raise for bad input or exhausted retries | Raise exceptions | Callers must look at the result. In return, one failed channel cannot abort the others |
 | 8 | Unknown channel name | `send()` **raises** `UnknownChannelError`, but `broadcast()` turns it into a failed result | Always raise, or always swallow | Two behaviours to learn. It fits the two uses: a direct call with a bad name is a bug, while stored preferences can be stale |
 | 9 | Retry policy | A `max_attempts` class attribute, overridable per notifier | One global setting | It lets each channel carry its own budget, at the price of more places to look |
-| 10 | Shipping a Pythonic variant | `CallableNotifier(make_channel)` next to the subclasses | Subclasses only | Two ways to do the same thing. Worth it because the comparison is the lesson (see 6.6) |
+| 10 | Shipping a Pythonic variant | `CallableNotifier(make_channel)` next to the subclasses | Subclasses only | Two ways to do the same thing. Worth it because the comparison is the lesson (see 8.6) |
 
 Smaller choices:
 
@@ -396,13 +1007,13 @@ Smaller choices:
 - `Gateway` is a **`Protocol`**, so any object with a `send(address, text)` method qualifies. Tests use `RecordingGateway`, and production would supply an SMTP or SMS gateway.
 - `Channel.validate()` **raises** `InvalidNotification`, and `Notifier.notify()` turns that into a result. Validation stays simple inside the channel, and the reporting policy stays in one place.
 
-### 6.6 Choosing the factory flavour
+### 8.6 Choosing the factory flavour
 
 Which of the three flavours does this design need? Compare the realistic options:
 
 | Option | Adding a "Slack" channel means | Verdict for this design |
 |--------|--------------------------------|-------------------------|
-| `if/elif` on the channel name | Editing every chain, in every file that has one | The problem from section 1. Avoid |
+| `if/elif` on the channel name | Editing every chain, in every file that has one | The problem from section 1 (the coffee shop's repeated `if` chains). Avoid |
 | Simple factory as an `if/elif` inside one function | Editing that one function | Fine for a small, stable set. Breaks Open/Closed |
 | **Simple factory with a registry** | Registering one more entry at start-up | **Chosen** for selecting by name |
 | **Factory Method** (`Notifier` subclasses) | One `Channel` class + one `Notifier` subclass + one register line | **Chosen** for the workflow: it shares the retry logic and lets each notifier carry its own policy |
@@ -416,7 +1027,7 @@ Notice that the last two rows are honest competitors. For a design this small, `
 !!! tip "Interview tip"
     Say the flavours out loud as you choose: "I would start with a registry-based simple factory to pick by name. The delivery workflow is shared but the channel differs, so that is a Factory Method. I would only reach for Abstract Factory if channels needed matching families of objects." That shows you know the vocabulary *and* when each one applies.
 
-### 6.7 Testing, and what the tests prove
+### 8.7 Testing, and what the tests prove
 
 | Test file | What it proves |
 |-----------|----------------|
@@ -424,6 +1035,7 @@ Notice that the last two rows are honest competitors. For a design this small, `
 | `test_notifier.py` | First-try success; retries until success; gives up after `max_attempts`; invalid input is never sent; each notifier has its own retry budget; the factory method is a test seam; `CallableNotifier` matches a subclass |
 | `test_factory.py` | Correct notifier per name; a fresh one per call; helpful unknown-name error; duplicate names rejected; **a brand-new channel works through the factory without changing existing code** |
 | `test_service.py` | Routing by name; `send` raises for unknown names; `broadcast` keeps going when one channel is unknown or invalid |
+| `test_flavours.py` | The three small teaching examples in sections 4 to 6: each factory builds the right thing and refuses bad input; the coffee cafe can be tested with a fake factory; every city sends its own vehicle while the booking steps stay identical; **a new city and a new furniture style plug in without editing existing classes**; a half-finished furniture factory cannot be created |
 | `test_factory_docs_in_sync.py` | The code on this page equals the files |
 
 Two of these deserve a closer look.
@@ -444,9 +1056,9 @@ class TestNotifier(Notifier):
 
 **The open/closed check.** `test_new_channel_needs_no_change_to_existing_code` defines a `SlackChannel` and `SlackNotifier` *inside the test*, registers them with the factory, and sends through it. If adding a channel required editing the library, that test could not be written.
 
-I also checked that the tests can fail. I broke the code on purpose in nine ways in a scratch copy (no retry, validation skipped, SMS limit ignored, duplicate names allowed, the unknown-name error hiding valid names, `broadcast` letting an unknown channel escape, the factory reusing one notifier, a wrong SMS retry budget, and the gateway not being passed to channels). Every one was caught by at least one test.
+I also checked that the tests can fail. For the three small examples in sections 4 to 6 I broke the code on purpose in nine ways (for example, a latte that builds an espresso, a ride app that ignores its factory method, a modern factory that builds a Victorian sofa), and every one was caught. For the Notification Service I broke the code on purpose in nine more ways in a scratch copy (no retry, validation skipped, SMS limit ignored, duplicate names allowed, the unknown-name error hiding valid names, `broadcast` letting an unknown channel escape, the factory reusing one notifier, a wrong SMS retry budget, and the gateway not being passed to channels). Every one was caught by at least one test.
 
-### 6.8 The code
+### 8.8 The code
 
 Each block below is the real file from this folder.
 
@@ -820,7 +1432,7 @@ pytest
 
 From this folder or from the repository root, both work.
 
-### 6.9 Extending it, and interview follow-ups
+### 8.9 Extending it, and interview follow-ups
 
 **Adding a channel** takes one of two routes, and both are covered by tests:
 
@@ -839,7 +1451,7 @@ Follow-up questions and where the design would go:
 | "Pick the channel from user preferences" | Already what `broadcast()` does. Add a preference order and stop after the first success |
 | "New provider for SMS" | Write a new `Gateway`. Channels and notifiers do not change, which is the payoff of the `Gateway` protocol |
 
-## 7. Where to use it
+## 9. Where to use it
 
 Use a factory when **creation logic is complicated, varies, or should be hidden** behind an interface.
 
@@ -874,7 +1486,7 @@ Outside the standard library, `sqlalchemy.create_engine("postgresql://...")` ret
 - **Construction is trivial and never changes.** A factory around `Point(x, y)` is noise.
 - **You are building a framework "just in case".** Speculative flexibility has a cost: more classes to read and more places to look.
 
-## 8. Tradeoffs and criticism
+## 10. Tradeoffs and criticism
 
 Factories are widely used and widely overused. You should be able to argue both sides.
 
@@ -900,9 +1512,9 @@ A tempting shortcut is a module-level dictionary that channels add themselves to
 
 ### Testing code that uses factories
 
-Inject the factory rather than importing it, so a test can hand in a factory that returns fakes. `NotificationService` takes a `NotifierFactory` in its constructor for exactly this reason. Where a class builds its own collaborators through a factory method, override that method in a test subclass (see 6.7).
+Inject the factory rather than importing it, so a test can hand in a factory that returns fakes. `NotificationService` takes a `NotifierFactory` in its constructor for exactly this reason. Where a class builds its own collaborators through a factory method, override that method in a test subclass (see 8.7).
 
-## 9. Interview tips
+## 11. Interview tips
 
 !!! tip "Interview tip: how to structure your answer"
     1. Start from the problem: callers are tied to concrete classes and `if/elif` chains multiply.
@@ -926,7 +1538,7 @@ Common questions and short model answers:
 | Should the factory be a Singleton? | Usually you build **one** at start-up and pass it in (dependency injection), which gives you one instance without the global-access costs. See the [Singleton page](../singleton-design-pattern/README.md) |
 | Does the factory need to be thread-safe? | Reading a registry that was filled at start-up is safe. If you register at run time, guard the dictionary with a lock |
 
-## 10. Key takeaways
+## 12. Key takeaways
 
 - A factory **hides which concrete class is created** behind an interface, so callers depend on the interface only.
 - **Simple Factory** picks by input, **Factory Method** lets subclasses decide inside a shared workflow, and **Abstract Factory** creates matching families.
