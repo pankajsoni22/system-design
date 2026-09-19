@@ -278,6 +278,9 @@ Underline the nouns, then give each class one job:
 
 ### 6.3 Class diagram
 
+!!! tip "New to class diagrams?"
+    See [UML Basics: Class Diagrams](../../concept/uml-basics.md) for what every box, arrow and diamond means.
+
 ```mermaid
 classDiagram
     direction LR

@@ -190,6 +190,9 @@ This separation is the Single Responsibility Principle at work, and it is what m
 
 ### 6.3 Class diagram
 
+!!! tip "New to class diagrams?"
+    See [UML Basics: Class Diagrams](../../concept/uml-basics.md) for what every box, arrow and diamond means.
+
 ```mermaid
 classDiagram
     direction LR

@@ -76,3 +76,4 @@ nav:
           - Factory Design Pattern: low-level-design/design-principles/factory-design-pattern/README.md
       - Concepts:
           - low-level-design/concept/README.md
+          - UML Basics (Class Diagrams): low-level-design/concept/uml-basics.md

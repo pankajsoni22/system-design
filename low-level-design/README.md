@@ -18,6 +18,8 @@ Start here. Each page builds the intuition first, then gives the formal definiti
 
 Reusable building blocks that designs link back to. See the [concepts index](concept/README.md).
 
+- [UML Basics: Class Diagrams](concept/uml-basics.md): read this first if the class diagrams in the designs are new to you.
+
 ## Designs
 
 _No designs yet._
