@@ -25,6 +25,7 @@ system-design/
 ├── README.md                     # Landing page: what this is, how to navigate, index of all designs
 ├── mkdocs.yml                    # Docs site config (nav must be updated with every new page)
 ├── requirements.txt              # Python deps to build the docs site
+├── pytest.ini                    # Lets one `pytest` run from the root cover every pattern folder
 ├── docs/                         # Symlinks only (index.md, high-level-design, low-level-design); never put content here
 ├── .github/workflows/docs.yml    # Builds and deploys the site to GitHub Pages
 ├── high-level-design/
@@ -34,7 +35,8 @@ system-design/
 └── low-level-design/
     ├── README.md                 # Index of LLD concepts and designs
     ├── design-principles/        # Principles and design patterns, one directory each
-    │   └── singleton-design-pattern/   # README.md (the tutorial) + logger/ (source) + tests/ + demos
+    │   ├── singleton-design-pattern/   # README.md (the tutorial) + logger/ (source) + tests/ + demos
+    │   └── factory-design-pattern/     # README.md (the tutorial) + notifications/ (source) + tests/ + demo
     ├── concept/                  # Other LLD building blocks (UML notation, concurrency primitives, ...)
     └── design-<name>/            # e.g. design-parking-lot/
 ```
@@ -149,8 +151,9 @@ flowchart LR
 - Use only the standard library in reference code, apart from `pytest` for tests. If a third-party package is genuinely needed, say why on the page.
 - Code must run. Keep each example minimal, with an `if __name__ == "__main__":` demo or tests. Include `pytest` tests for behavior that is non-obvious, and for concurrency where relevant.
 - Code lives in the design's `05-implementation/` directory as a plain package (`__init__.py`, one module per class or small group of related classes, `tests/`). It is shown in the docs page.
-- Show code **inline in the Markdown** (so it reads on GitHub as well as on the site) as fenced blocks titled with the file path relative to the page, e.g. ```` ```python title="logger/logger.py" ````, with content identical to the file. Generate those blocks from the real files instead of typing them, and keep a `tests/test_docs_in_sync.py` next to the page that fails when a titled block differs from its file. Blocks without a `title` are illustrative only.
+- Show code **inline in the Markdown** (so it reads on GitHub as well as on the site) as fenced blocks titled with the file path relative to the page, e.g. ```` ```python title="logger/logger.py" ````, with content identical to the file. Generate those blocks from the real files instead of typing them, and keep a `tests/test_<topic>_docs_in_sync.py` next to the page that fails when a titled block differs from its file. Test file names must be unique across the repo (there are no `__init__.py` files in `tests/`), so that one `pytest` run from the repo root works. The root `pytest.ini` skips `docs/`, which only holds symlinks. Blocks without a `title` are illustrative only.
 - Concurrency tests must be able to fail: widen the race window (slow the code under test, release threads with a barrier), and check by temporarily removing the protection that the test then fails. Say honestly on the page when a protection cannot be shown to matter on CPython.
+- Run before you claim: any statement on a page about how the standard library or the interpreter behaves ("`functools.cache` is not race-safe", "`multiprocessing.get_context` returns matching classes") must have been run on 3.12 first. Only state what was observed, and say when something is an illustrative limit or example policy rather than a fact.
 - Write idiomatic Python: use properties, first-class functions, `Protocol`s and composition instead of getters/setters, deep inheritance or pattern boilerplate. Say so when a classic pattern collapses into a language feature (e.g. Strategy as a callable).
 
 ## Docs site

@@ -12,6 +12,7 @@ Low-level design (LLD) is about the code-level structure of a system: classes, i
 Start here. Each page builds the intuition first, then gives the formal definition, code and real-world uses. See the [design principles index](design-principles/README.md).
 
 - [Singleton Design Pattern](design-principles/singleton-design-pattern/README.md)
+- [Factory Design Pattern](design-principles/factory-design-pattern/README.md)
 
 ## Concepts
 

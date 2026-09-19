@@ -367,7 +367,7 @@ One honest detail about the third row. For `FileHandler` on CPython, a single `w
 
 ### 6.8 The code
 
-Each block below is the real file from this folder. A test (`tests/test_docs_in_sync.py`) fails if this page and the files ever disagree.
+Each block below is the real file from this folder. A test (`tests/test_singleton_docs_in_sync.py`) fails if this page and the files ever disagree.
 
 **Severity levels**
 
@@ -676,7 +676,7 @@ pytest
 | `test_logger.py` | Level filtering, fan-out to every handler, a failing handler does not stop the others, custom formatters plug in |
 | `test_handlers.py` | File and console output; concurrent writes stay intact; the handler lock keeps multi-step emits together |
 | `test_dependency_injection.py` | The injected-logger example in [section 8](#8-tradeoffs-and-criticism) |
-| `test_docs_in_sync.py` | The code on this page equals the files |
+| `test_singleton_docs_in_sync.py` | The code on this page equals the files |
 
 ### 6.9 Extending it, and interview follow-ups
 

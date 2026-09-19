@@ -31,6 +31,7 @@ Status: `planned` → `draft` → `complete`.
 | Type | Topic | Status |
 |------|-------|--------|
 | Design pattern | [Singleton, with a worked Logger design](low-level-design/design-principles/singleton-design-pattern/README.md) | `complete` |
+| Design pattern | [Factory (Simple, Method, Abstract), with a worked Notification Service design](low-level-design/design-principles/factory-design-pattern/README.md) | `complete` |
 | Concept | _none yet_ | |
 | Design | _none yet_ | |
 
