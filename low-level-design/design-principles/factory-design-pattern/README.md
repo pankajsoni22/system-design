@@ -918,7 +918,7 @@ Common questions and short model answers:
 | Simple Factory vs Factory Method? | A simple factory is one function or class that picks what to create from an input. Factory Method is a hook in a base class that subclasses override, and the base class's workflow uses the result |
 | How do you add a new type without editing the factory? | Use a registry: `register(name, creator)` at start-up, so the factory itself never changes. A hard-coded `if/elif` violates Open/Closed |
 | Factory vs Builder? | A factory decides **which class** to create. A builder assembles **one complex object** step by step |
-| Factory vs Strategy? | A factory *creates* objects. Strategy is about interchangeable *behaviour*. They combine well: a factory often creates the right strategy |
+| Factory vs Strategy? | A factory *creates* objects. [Strategy](../strategy-design-pattern/README.md) is about interchangeable *behaviour*. They combine well: a factory often creates the right strategy |
 | Why not just call the constructor? | Sometimes you should. A factory pays off when the concrete class varies, when creation needs config or wiring, or when you want to return a cached or subclass instance |
 | What is a "static factory method" or named constructor? | A class method such as `datetime.fromisoformat(...)`: a descriptive name, and freedom to validate, cache, or return a subclass. It is related to, but not the same as, the GoF Factory Method |
 | How do you unit test code that uses a factory? | Inject the factory so a test can supply fakes, or override the factory method in a test subclass |

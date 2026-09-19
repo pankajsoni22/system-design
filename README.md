@@ -33,6 +33,7 @@ Status: `planned` → `draft` → `complete`.
 | Concept | [UML basics: class diagrams](low-level-design/concept/uml-basics.md) | `complete` |
 | Design pattern | [Singleton, with a worked Logger design](low-level-design/design-principles/singleton-design-pattern/README.md) | `complete` |
 | Design pattern | [Factory (Simple, Method, Abstract), with a worked Notification Service design](low-level-design/design-principles/factory-design-pattern/README.md) | `complete` |
+| Design pattern | [Strategy, with a worked cache-eviction design](low-level-design/design-principles/strategy-design-pattern/README.md) | `complete` |
 | Design | _none yet_ | |
 
 ## Run the docs site locally

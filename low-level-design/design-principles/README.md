@@ -10,4 +10,5 @@ Foundations for low-level design. Each page starts from a problem, builds the in
 | Topic | What it covers |
 |-------|----------------|
 | [Factory Design Pattern](factory-design-pattern/README.md) | Simple Factory, Factory Method and Abstract Factory: definitions, a worked Notification Service design (class diagrams, decisions, tradeoffs, runnable tested code), real-world uses, interview questions |
+| [Strategy Design Pattern](strategy-design-pattern/README.md) | Interchangeable algorithms behind one interface: definition, a worked cache with pluggable eviction policies (class and sequence diagrams, decisions, tradeoffs, runnable tested code), class versus function, real-world uses, interview questions |
 | [Singleton Design Pattern](singleton-design-pattern/README.md) | One shared instance with global access: definition, a worked thread-safe Logger design (class diagram, decisions, tradeoffs, runnable code), real-world uses, interview questions |

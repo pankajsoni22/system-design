@@ -36,7 +36,8 @@ system-design/
     ├── README.md                 # Index of LLD concepts and designs
     ├── design-principles/        # Principles and design patterns, one directory each
     │   ├── singleton-design-pattern/   # README.md (the tutorial) + logger/ (source) + tests/ + demos
-    │   └── factory-design-pattern/     # README.md (the tutorial) + notifications/ (source) + tests/ + demo
+    │   ├── factory-design-pattern/     # README.md (the tutorial) + notifications/ (source) + tests/ + demo
+    │   └── strategy-design-pattern/    # README.md (the tutorial) + cache/ (source) + tests/ + demo
     ├── concept/                  # Other LLD building blocks (UML notation, concurrency primitives, ...)
     └── design-<name>/            # e.g. design-parking-lot/
 ```
@@ -90,6 +91,7 @@ description: <One-sentence summary, used for search and SEO>
 - Exactly one H1 per page; use H2/H3 for structure. Do not skip heading levels.
 - Open with a short summary of what the reader will learn, close with key takeaways.
 - Use relative links between pages (`../concept/caching.md`), never absolute URLs to the repo or site. Link to a concept the first time it is used on a page.
+- Never put a `|` character inside a table cell, not even escaped as `\|`: MkDocs shows the backslash while GitHub hides it. Describe the arrow or type in words, or show the syntax in a code block (for example `Passport` or `None`, not the union syntax).
 - Use tables for comparisons and tradeoffs. Use admonitions for callouts (`!!! tip "Interview tip"`, `!!! warning "Common mistake"`, `!!! note "Real world"`).
 - Put code in fenced blocks with a language tag. Keep prose paragraphs short.
 - Avoid content that depends on a specific renderer beyond what is listed here (MkDocs Material + Mermaid), so pages still read acceptably on GitHub.
