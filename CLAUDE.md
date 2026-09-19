@@ -33,17 +33,19 @@ system-design/
 │   └── design-<name>/            # e.g. design-book-my-show/
 └── low-level-design/
     ├── README.md                 # Index of LLD concepts and designs
-    ├── concept/                  # e.g. solid-principles.md, creational-patterns.md
+    ├── design-principles/        # Principles and design patterns, one page each: singleton-design-pattern.md, solid-principles.md
+    ├── concept/                  # Other LLD building blocks (UML notation, concurrency primitives, ...)
     └── design-<name>/            # e.g. design-parking-lot/
 ```
 
 Rules:
 1. There are two top-level content directories: `high-level-design` and `low-level-design`.
 2. Each may contain a `concept` directory with one file per concept. Concepts are self-contained and are linked from designs instead of being re-explained in them.
-3. Every design example lives in its own directory named `design-<kebab-case-name>`, e.g. `design-book-my-show`.
-4. Each design directory has a `README.md` as its entry point. Longer designs split into numbered files (see templates) so pages stay readable.
-5. Directory and file names are lowercase kebab-case. No spaces.
-6. Every new page is added to the parent `README.md` index and to the `nav` in `mkdocs.yml`.
+3. `low-level-design/design-principles/` holds OO design principles and design patterns (SOLID, Singleton, Factory, ...), one file per topic named `<topic>-design-pattern.md` for patterns or `<topic>.md` for principles. It has its own `README.md` index. Pattern and principle pages follow this flow: problem → intuition/analogy → plain-words explanation → official definition explained → structure diagrams → step-by-step Python 3.12 implementation → real-world uses and when not to use → tradeoffs → interview tips → key takeaways → references.
+4. Every design example lives in its own directory named `design-<kebab-case-name>`, e.g. `design-book-my-show`.
+5. Each design directory has a `README.md` as its entry point. Longer designs split into numbered files (see templates) so pages stay readable.
+6. Directory and file names are lowercase kebab-case. No spaces.
+7. Every new page is added to the parent `README.md` index and to the `nav` in `mkdocs.yml`.
 
 ## Design directory templates
 Use these as the default outline. Skip a section only if it genuinely does not apply, and never leave it empty.

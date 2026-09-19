@@ -63,5 +63,8 @@ nav:
           - high-level-design/concept/README.md
   - Low-Level Design:
       - low-level-design/README.md
+      - Design Principles:
+          - low-level-design/design-principles/README.md
+          - Singleton Design Pattern: low-level-design/design-principles/singleton-design-pattern.md
       - Concepts:
           - low-level-design/concept/README.md

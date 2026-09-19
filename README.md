@@ -30,6 +30,7 @@ Status: `planned` → `draft` → `complete`.
 
 | Type | Topic | Status |
 |------|-------|--------|
+| Design pattern | [Singleton](low-level-design/design-principles/singleton-design-pattern.md) | `complete` |
 | Concept | _none yet_ | |
 | Design | _none yet_ | |
 
